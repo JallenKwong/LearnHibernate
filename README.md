@@ -169,4 +169,30 @@ TODO:5.6还有书上没有提及的源码，稍后再跑
 
 [embedded](src/main/java/com/lun/light/component/embedded)
 
+---
+
 # 深入使用Hibernate #
+
+## Hibernatede的关联映射 ##
+
+- 单向关系
+	- 1-1
+	- 1-N
+	- N-1
+	- N-N
+- 双向关联
+	- 1-1
+	- 1-N
+	- N-N
+
+双向关系没有N-1，因为双向关系1-N和N-1是完全相同
+
+### 单向N-1 ###
+
+例子：**多人对应一个住址**，只需从人实体端可以找到对应的地址实体，无须关心某个地址的全部住户
+
+[Person-Address 单向 N-1 无连接表](src/main/java/com/lun/light/unidirectional/one2nnojointable/Address.java)
+
+[]()
+
+
