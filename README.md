@@ -175,24 +175,48 @@ TODO:5.6还有书上没有提及的源码，稍后再跑
 
 ## Hibernatede的关联映射 ##
 
-- 单向关系
+- [单向关系](src/main/java/com/lun/light/unidirectional)
 	- 1-1
 	- 1-N
 	- N-1
 	- N-N
-- 双向关联
+- [双向关联](src/main/java/com/lun/light/bidirectional)
 	- 1-1
 	- 1-N
 	- N-N
 
 双向关系没有N-1，因为双向关系1-N和N-1是完全相同
 
-### 单向N-1 ###
+[组件属性包含的关联实体](src/main/java/com/lun/light/componententity)
 
-例子：**多人对应一个住址**，只需从人实体端可以找到对应的地址实体，无须关心某个地址的全部住户
+[基于复合主键的关联关系](src/main/java/com/lun/light/one2ncompositeid)
 
-[Person-Address 单向 N-1 无连接表](src/main/java/com/lun/light/unidirectional/one2nnojointable/Address.java)
+> What's Hibernate @OneToMany mappedBy used for?
 
-[]()
+>MappedBy signals hibernate that the key for the relationship is on the other side.
+
+>This means that although you link 2 tables together, only 1 of those tables has a foreign key constraint to the other one. MappedBy allows you to still link from the table not containing the constraint to the other table.
+
+>[Can someone please explain mappedBy in hibernate?](https://stackoverflow.com/questions/9108224/can-someone-please-explain-mappedby-in-hibernate)
+
+### 持久化的传播性 ###
+
+麻烦之处：
+
+当程序总有两个关联实体是，程序需要主动保存、删除或重关联每个持久化实体，若需处理多个彼此关联实体，则需要依次保存每个实体
+
+从DB建模的角度来看，两表间的1-N关联关系总是用外键约束来表示，其中保留外键的数据表被称为从表，被从表参照的数据表被称为主表
+
+对于上述主从表约束关系，Hibernate则有两种映射策略：
+
+- 将从表记录映射成持久化类的组件
+- 将从表记录映射成持久化实体
+
+
+解决之道：Cascade,级联操作
+
+对主的动作，将会影响到从的性质
+
+## 继承映射 ##
 
 
