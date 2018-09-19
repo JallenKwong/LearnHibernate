@@ -219,4 +219,300 @@ TODO:5.6还有书上没有提及的源码，稍后再跑
 
 ## 继承映射 ##
 
+![](image/inheritance.png)
 
+[joined](src/main/java/com/lun/light/inheritance/joined) 父表有子表的记录，子表只记录负责特有的列
+
+[singletable](src/main/java/com/lun/light/inheritance/singletable) 只有一表，特有属性大有为null
+
+[tableperclass](src/main/java/com/lun/light/inheritance/tableperclass) 表每一个类，所有表都有应有的列，当主键不能用独表自增策略
+
+上属横向分割映射
+
+## 批量处理 ##
+
+### 批量插入 ###
+
+若100000条数据，按普通的方法一条条save()的话，会抛出OutOfMemoryException，这是因为Hibernate的Session持有一个必选的一级缓存，所有实例将在缓存区进行了缓存的缘故
+
+解决之道：定时将Session缓存的数据刷入数据库
+
+另外也要关闭二级缓存
+
+[批量插入](src/main/java/com/lun/light/batch/insert)
+
+### 批量更新 ###
+
+定时将Session缓存的数据刷入数据库，同样适用批量更新
+
+若需返回多行数据，应使用scroll()方法，从而可以充分利用服务器端的游标所带来的性能优势。
+
+[批量更新](src/main/java/com/lun/light/batch/update)
+
+但上述批量更新效率不高，因为需要先执行数据查询，然后再执行数据更新，且逐行更新，
+
+DML风格的批量更新，会高效
+
+### DML风格的批量更新/删除 ###
+
+使用HQL形式，底层操作实际上是由JDBC完成的
+
+[批量更新2](src/main/java/com/lun/light/batch/update)
+
+[批量删除](src/main/java/com/lun/light/batch/delete)
+
+## 使用HQL查询 ##
+
+Hibernate Query Language
+
+使用HQL的步骤
+
+1. 获取Hibernate Session对象
+2. 编写HQL语句
+3. 以HQL语句作为参数，调用Session的createQuery()创建查询对象
+4. 若HQL语句包含参数，则调用Query的setXxx()为参数赋值
+5. 调用Query对象的list()等方法返回查询结果列表（持久化实体集）
+
+HQL语句对大小写敏感
+
+[Hello HQL](src/main/java/com/lun/light/hql/hello)
+
+### The from clause ###
+
+	from Cat as cat
+
+### Associations and joins ###
+
+	from Cat as cat
+	    inner join cat.mate as mate
+	    left outer join cat.kittens as kitten
+
+	from Cat as cat left join cat.mate.kittens as kittens
+
+	from Formula form full join form.parameter param
+
+---
+
+The supported join types are borrowed from ANSI SQL:
+
+- inner join
+
+- left outer join
+
+- right outer join
+
+- full join (not usually useful)
+
+简写 （去掉inner,outer）
+
+	from Cat as cat
+	    join cat.mate as mate
+	    left join cat.kittens as kitten
+
+使用HQL的关键词with
+
+	from Cat as cat
+	    left join cat.kittens as kitten
+	        with kitten.bodyWeight > 10.0
+
+**fetch**
+
+用fetch带出实体集合，针对**懒加载**
+
+A "**fetch**" join allows associations or collections of values to be initialized along with their parent objects using **a single select**. 
+
+This is particularly useful in the case of a collection.
+
+It effectively overrides the outer join and lazy declarations of the mapping file for associations and collections.
+
+	from Cat as cat
+	    inner join fetch cat.mate
+	    left join fetch cat.kittens
+
+fetch all properties 关键词 lazy=true
+
+	from Document fetch all properties order by name
+
+
+### Forms of join syntax ###
+
+明式（有join等关键字） 和 隐式（没有join等，如下）
+
+	from Cat as cat where cat.mate.name like '%s%'
+
+[隐式join](src/main/java/com/lun/light/hql/implicit)
+
+### The select clause ###
+
+	select mate
+		from Cat as cat
+	    inner join cat.mate as mate
+
+	select cat.mate from Cat cat
+
+	select cat.name from DomesticCat cat
+	where cat.name like 'fri%'
+
+	select cust.name.firstName from Customer as cust
+
+---
+
+Queries can return multiple objects and/or properties as **an array of type Object[]**:（List<Object[]>）
+
+	select mother, offspr, mate.name
+	from DomesticCat as mother
+	    inner join mother.mate as mate
+	    left outer join mother.kittens as offspr
+
+or as a **List**
+
+	select new list(mother, offspr, mate.name)
+	from DomesticCat as mother
+	    inner join mother.mate as mate
+	    left outer join mother.kittens as offspr
+
+or **assuming** that the class **Family** has an appropriate constructor - as an actual typesafe Java object:
+
+	select new Family(mother, mate, offspr)
+	from DomesticCat as mother
+	    join mother.mate as mate
+	    left join mother.kittens as offspr
+
+You can assign aliases to selected expressions using as:
+
+	select max(bodyWeight) as max, min(bodyWeight) as min, count(*) as n
+	from Cat cat
+
+This is most useful when used together with select new map:
+
+	select new map( max(bodyWeight) as max, min(bodyWeight) as min, count(*) as n )
+	from Cat cat
+
+This query returns a **Map** from aliases to selected values.
+
+	key 就是 as 后的别名
+
+### Aggregate functions ###
+
+	select avg(cat.weight), sum(cat.weight), max(cat.weight), count(cat)
+	from Cat cat
+
+- avg(...), sum(...), min(...), max(...)
+
+- count(*)
+
+- count(...), count(distinct ...), count(all...)
+
+### Polymorphic queries ###
+
+	from Cat as cat
+
+returns instances not only of Cat, but also of subclasses like DomesticCat. 
+
+Hibernate queries can name any Java class or interface in the from clause. 
+
+The query will return instances of all persistent classes that extend that class or implement the interface. 
+
+### The where clause ###
+
+The where clause allows you to refine the list of instances returned. If no alias exists, you can refer to properties by name:
+
+	from Cat where name='Fritz'
+
+If there is an alias, use a qualified property name:
+
+	from Cat as cat where cat.name='Fritz'
+
+This returns instances of Cat named 'Fritz'.
+
+### 表达式 ###
+
+很强大，具体查看官档
+
+### The order by clause ###
+
+The list returned by a query can be ordered by any property of a returned class or components:
+
+	from DomesticCat cat
+	order by cat.name asc, cat.weight desc nulls first, cat.birthdate
+
+The optional asc or desc indicate ascending or descending order respectively.
+
+The optional nulls first or nulls last indicate precedence of null values while sorting.
+
+### The group by clause ###
+
+A query that returns aggregate values can be grouped by any property of a returned class or components:
+
+	select cat.color, sum(cat.weight), count(cat)
+	from Cat cat
+	group by cat.color
+
+	select foo.id, avg(name), max(name)
+	from Foo foo join foo.names name
+	group by foo.id
+
+A having clause is also allowed.
+
+	select cat.color, sum(cat.weight), count(cat)
+	from Cat cat
+	group by cat.color
+	having cat.color in (eg.Color.TABBY, eg.Color.BLACK)
+
+### Subqueries ###
+
+子查询
+
+	from Cat as fatcat
+	where fatcat.weight > (
+	    select avg(cat.weight) from DomesticCat cat
+	)
+
+	from DomesticCat as cat
+	where cat.name = some (
+	    select name.nickName from Name as name
+	)
+
+	from Cat as cat
+	where not exists (
+	    from Cat as mate where mate.mate = cat
+	)
+
+	from DomesticCat as cat
+	where cat.name not in (
+	    select name.nickName from Name as name
+	)
+
+	select cat.id, (select max(kit.weight) from cat.kitten kit)
+	from Cat as cat
+
+### 命名查询 ###
+
+[@NamedQuery](src/main/java/com/lun/light/hql/named) @NamedQuery修饰在实体的查询
+
+
+## 面象条件查询 ##
+
+面象条件查询具有面向对象编程特色的数据查询方式
+
+面象条件查询通过如下三个类完成：
+
+- Criteria 代表一次查询
+- Criterion(标准) 代表一个查询条件
+- Restrictions 产生查询条件的
+
+执行面象条件查询的步骤如下
+
+- 获取Hibernates的Session对象
+- 以Session对象创建Criteria对象
+- 使用Restrictions的静态方法创建Critertion查询条件
+- 向Criteria查询中**添加**Criterion查询条件
+- 执行Citeria的list()等方法返回结果集。
+
+[Hello Criteria](src/main/java/com/lun/light/criteria/hello) 基本用法动态关联
+
+[Projection](src/main/java/com/lun/light/criteria/projection) 聚合、投影和分组
+
+The **DetachedCriteria** class allows you to create a query outside the scope of a session and then execute it using an arbitrary Session.
+
+[DetachedCriteria](src/main/java/com/lun/light/criteria/detached) 离线查询Session的使用
