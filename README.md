@@ -516,3 +516,33 @@ A having clause is also allowed.
 The **DetachedCriteria** class allows you to create a query outside the scope of a session and then execute it using an arbitrary Session.
 
 [DetachedCriteria](src/main/java/com/lun/light/criteria/detached) 离线查询Session的使用
+
+
+## SQL ##
+
+addEntity():将查到的记录与特定的实体关联
+addScalar():将查询的记录关联成标量值
+
+SQL查询步骤
+
+1. 获取Hibernate Session
+2. 编写SQL语句
+3. 以SQL语句作参数，调用Session的createSQLQuery方法创建查询对象
+4. 调用SQLQuery对象的addScalar()或addEntity()方法将选出的结果与标量值或实体进行关联，分别用于进行标量查询或实体查询
+5. 若SQL语句包含参数，则调用Query的setXxx为参数赋值。
+6. 调用Query的list()返回查询结果集。
+
+
+[NativeSQL](src/main/java/com/lun/light/sql/nativesql) 标量查询、实体查询、JavaBean查询、关联继承
+
+[]()
+
+[]()
+
+
+
+
+
+
+
+
