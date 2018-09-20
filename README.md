@@ -532,17 +532,107 @@ SQL查询步骤
 5. 若SQL语句包含参数，则调用Query的setXxx为参数赋值。
 6. 调用Query的list()返回查询结果集。
 
-
 [NativeSQL](src/main/java/com/lun/light/sql/nativesql) 标量查询、实体查询、JavaBean查询、关联继承
 
-[]()
+[NamedSQL](src/main/java/com/lun/light/sql/namedsql) 命名SQL查询、调用存储过程
 
-[]()
+Hibernate提供了极好的可扩展性，通过使用定制SQL可以完全控制Hibernate底层持久化所用SQL语句
+
+[CustomSQL](src/main/java/com/lun/light/sql/customsql) 定制SQL
+
+## 数据过滤 ##
+
+[Filter](src/main/java/com/lun/light/filter) 数据过滤使用
+
+## 事务控制 ##
+
+事务是一步或几步基本操作组成的逻辑执行单元，这些基本操作作为一个整体执行单元，它们要么全部执行，要么全部取消，觉不能执行部分。
+
+事务具备4特性 ACID酸性
+
+1. 原子性Atomicity 事务是应用中不可再分的最小逻辑执行体
+2. 一致性Consistency 联想AB转账过程，保持AB前后状态一致，一致性是通过原子性保证的
+3. 隔离性isolation 各事务间不能相互影响
+4. 持久性durability 事务一旦提交，永久存入数据库
+
+SessionFactory 线程安全
+
+Session 线程不安全
+
+Hibernate 的所有持久化访问都必须在Session管理下进行，但并不推荐因为一次简单的数据库原子调用，就打开和关闭一次Session，数据库事务也如此。
+
+Hibernate建议采用每个请求对应一次Session的模式——因为一次请求通常表示需要执行一个完整的业务功能，这个功能由系列的数据库原子操作支撑，而且他们应该是一个逻辑上的整体。
+
+每次HTTPSession对应一次Hibernate Session的模式会导致应用程序无法扩展并发用户的数量，因此不推荐使用。
 
 
+实际应用中机场需要面对这种应用程序长事务，Hibernate有3中模式解决问题
+
+1. 自动版本化：Hibernate能够自动进行乐观并发控制
+
+2. 脱管对象：Hibernate允许把脱管对象重新关联到Session上，并且对修改进行持久化
+
+3. 长声明周期Session
+
+长生命周期Session可能因内存过多会导致OutOfMemoryException(解决之道：clear())
+
+在脱管状态下，访问一个实体所拥有的集合(teacher.getStudents().size())，或者访问其指向代理的属性时，都会引发LazyInitializationException(解决之道：Spring的OpenSessionInView,Hibernate.initialize()或)
+
+### 上下文相关的Session ###
+
+将线程不安全的Session绑定限制在当前线程内——也就是实现一种"上下文相关的"Session
+
+通过hibernate.current_session_context_class
+
+可由jta、thread、managed实现
+
+thread 独立Hibernate应用常用，Hibernate的Session会随着getCurrentSession()方法自动打开，并随着事务提交自动，非常方便。
+
+Spring提供了关于Hibernate的Session事务的管理的完美解决方案。
+
+## 二级缓存和查询缓存 ##
+
+Hibernate 包括两个级别的缓存
+
+- 默认总是启用Session的一级缓存
+- 可选的SessionFactory级别的二级缓存
 
 
+sess.evict(news);//剔除实体
+
+[SecondCache](src/main/java/com/lun/light/secondcache)
+
+**查询缓存**
+
+一二级缓存都是对整个实体进行缓存，它不会缓存普通属性，如果相对普通属性进行缓存，则考虑使用查询缓存
+
+查询缓存并不能提高性能，慎重使用
+
+对于查询缓存来说，它**缓存key**就是查询所用的**HQL或SQL语句**，需要指出的是：查询缓存不仅要求所使用的HQL语句、SQL语句相同，甚至要求传入的参数也相同，Hibernate才能字节从查询缓存中取得数据。
+
+[queryCache](src/main/java/com/lun/light/queryCache) 查询缓存的使用
+
+## 事件机制 ##
+
+通过事件框架，Hibernate允许应用程序能响应特定内部事件，从而允许实现某些通用的功能，或者对Hibernate功能进行扩展。
+
+- 拦截器机制：对于特定动作拦截，回调应用中的特定动作
+- 事件系统：重写Hibernate的事件监听器
 
 
+### 拦截器机制 ###
 
+通过Interceptor接口
 
+- 可以从Session中回调应用程序的特定的方法，这种回调机制可让应用程序在持久化对象被保存、更新、删除或加载之前，检查并修改其属性。
+- 可以在数据进入数据库只爱你，对数据进行最后的检查，如果数据不符合要求，可以修改数据，从而避免非法数据进入数据库。
+
+[Interceptor](src/main/java/com/lun/light/interceptor)
+
+### 事件系统 ###
+
+事件系统可以替代拦截器，亦可作为拦截器补充作用
+
+基本上，session接口的每个方法都有对应的事件，比如LoadEvent、FlushEvent等。当Session调用某种方法时，Hibernate Session会产生对应的事件，并激活对应的事件监听器。
+
+[Eventframe](src/main/java/com/lun/light/eventframe)
